@@ -53,12 +53,6 @@ class Pdf extends React.Component {
     scale: 1.0,
   };
 
-  static onDocumentError(err) {
-    if (err.isCanceled && err.pdf) {
-      err.pdf.destroy();
-    }
-  }
-
   // Converts an ArrayBuffer directly to base64, without any intermediate 'convert to string then
   // use window.btoa' step and without risking a blow of the stack. According to [Jon Leightons's]
   // tests, this appears to be a faster approach: http://jsperf.com/encoding-xhr-image-data/5
@@ -172,6 +166,14 @@ class Pdf extends React.Component {
     }
   }
 
+  onDocumentError(err) {
+    if (err.isCanceled && err.pdf) {
+      err.pdf.destroy();
+    }
+
+    this.setState({ error: true });
+  }
+
   onGetPdfRaw(pdfRaw) {
     const { onContentAvailable, onBinaryContentAvailable, binaryToBase64 } = this.props;
     if (typeof onBinaryContentAvailable === 'function') {
@@ -215,7 +217,7 @@ class Pdf extends React.Component {
     this.documentPromise
       .promise
       .then(this.onDocumentComplete)
-      .catch(this.onDocumentError);
+      .catch(this.onDocumentError.bind(this));
     return this.documentPromise;
   }
 
@@ -266,14 +268,23 @@ class Pdf extends React.Component {
 
   render() {
     const { loading } = this.props;
-    const { page } = this.state;
-    return page ?
-      <canvas
-        ref={(c) => { this.canvas = c; }}
-        className={this.props.className}
-        style={this.props.style}
-      /> :
-      loading || <div>Loading PDF...</div>;
+    const { page, error } = this.state;
+
+    if (error) {
+      return <div>Error loading pdf</div>;
+    } else if (page) {
+      return (
+        <canvas
+          ref={(c) => { this.canvas = c; }}
+          className={this.props.className}
+          style={this.props.style}
+        />
+      );
+    } else if (loading) {
+      return <div>Loading PDF...</div>;
+    }
+
+    return null;
   }
 }
 
