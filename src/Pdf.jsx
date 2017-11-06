@@ -1,8 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { TextLayerBuilder } from 'pdfjs-dist/lib/web/text_layer_builder';
 
 require('pdfjs-dist/build/pdf.combined');
-require('pdfjs-dist/web/compatibility');
+require('../src/text_layer_builder.css');
 
 const makeCancelable = (promise) => {
   let hasCanceled = false;
@@ -262,7 +263,26 @@ class Pdf extends React.Component {
       const viewport = page.getViewport(scale, rotate);
       canvas.height = viewport.height;
       canvas.width = viewport.width;
-      page.render({ canvasContext, viewport });
+      const container = document.querySelector('.pdf-container');
+      page.render({ canvasContext, viewport })
+        .then(() => {
+          return page.getTextContent();
+        })
+        .then((textContent) => {
+          const textLayerDiv = document.createElement('div');
+          textLayerDiv.setAttribute('class', 'textLayer');
+
+          container.appendChild(textLayerDiv);
+
+          const textLayer = new TextLayerBuilder({
+            textLayerDiv,
+            pageIndex: page.pageIndex,
+            viewport,
+          });
+
+          textLayer.setTextContent(textContent);
+          textLayer.render();
+        });
     }
   }
 
@@ -274,11 +294,13 @@ class Pdf extends React.Component {
       return <div>Error loading pdf</div>;
     } else if (page) {
       return (
-        <canvas
-          ref={(c) => { this.canvas = c; }}
-          className={this.props.className}
-          style={this.props.style}
-        />
+        <div className="pdf-container">
+          <canvas
+            ref={(c) => { this.canvas = c; }}
+            className={this.props.className}
+            style={this.props.style}
+          />
+        </div>
       );
     } else if (loading) {
       return <div>Loading PDF...</div>;

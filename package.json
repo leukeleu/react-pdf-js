@@ -9,13 +9,13 @@
     "url": "https://github.com/mikecousins/react-pdf-js"
   },
   "scripts": {
-    "build": "npm run build:lib && npm run build:umd && npm run build:umd:min",
+    "build": "yarn run build:lib && yarn run build:umd && yarn run build:umd:min",
     "build:lib": "babel src --out-dir lib",
     "build:umd": "webpack src/index.js dist/react-pdf-js.js --config webpack.config.development.js",
     "build:umd:min": "webpack src/index.js dist/react-pdf-js.min.js --config webpack.config.production.js",
     "clean": "rimraf dist lib",
     "lint": "eslint src --ext .js --ext .jsx",
-    "prepublish": "npm run lint && npm run clean && npm run build"
+    "prepublish": "yarn lint && yarn clean && yarn build"
   },
   "keywords": [
     "react",
@@ -34,10 +34,13 @@
     "react-dom": "^15.5.3 || ~0.14.0"
   },
   "dependencies": {
-    "pdfjs-dist": "1.8.177",
+    "pdfjs-dist": "2.0.99",
     "prop-types": "^15.5.6"
   },
   "devDependencies": {
+    "css-loader": "^0.28.7",
+    "style-loader": "^0.19.0",
+    "extract-text-webpack-plugin": "^3.0.2",
     "babel-cli": "6.24.1",
     "babel-core": "6.24.1",
     "babel-eslint": "7.2.1",
@@ -58,7 +61,7 @@
     "react-dom": "15.5.3",
     "rifraf": "2.0.3",
     "rimraf": "2.6.1",
-    "webpack": "2.3.3"
+    "webpack": "^3.8.1"
   },
   "npmName": "react-pdf-js",
   "npmFileMap": [

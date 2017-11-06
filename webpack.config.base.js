@@ -1,5 +1,6 @@
 'use strict';
 var webpack = require('webpack');
+var ExtractTextPlugin = require("extract-text-webpack-plugin");
 
 var reactExternal = {
   root: 'React',
@@ -18,7 +19,14 @@ module.exports = {
         test: /\.jsx?$/,
         use: 'babel-loader',
         exclude: /node_modules/
-      }
+      },
+      {
+        test: /\.css$/,
+        use: ExtractTextPlugin.extract({
+          fallback: "style-loader",
+          use: "css-loader"
+        })
+      },
     ]
   },
   output: {
@@ -27,5 +35,5 @@ module.exports = {
   },
   resolve: {
     extensions: ['.js', '.jsx']
-  }
+  },
 };
