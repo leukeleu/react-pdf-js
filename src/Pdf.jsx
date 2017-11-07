@@ -258,16 +258,20 @@ class Pdf extends React.Component {
     const { page } = this.state;
     if (page) {
       const { canvas } = this;
-      const canvasContext = canvas.getContext('2d');
-      const { scale, rotate } = this.props;
-      const viewport = page.getViewport(scale, rotate);
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
+      const { rotate } = this.props;
+
+      const unscaledViewport = page.getViewport(1);
       const container = document.querySelector('.pdf-container');
-      page.render({ canvasContext, viewport })
-        .then(() => {
-          return page.getTextContent();
-        })
+
+      const aspectRatio = unscaledViewport.height / unscaledViewport.width;
+      canvas.height = container.clientWidth * aspectRatio;
+      canvas.width = container.clientWidth;
+
+      const scale = canvas.width / unscaledViewport.width;
+      const viewport = page.getViewport(scale, rotate);
+
+      page.render({ canvasContext: canvas.getContext('2d'), viewport })
+        .then(() => page.getTextContent())
         .then((textContent) => {
           const textLayerDiv = document.createElement('div');
           textLayerDiv.setAttribute('class', 'textLayer');
