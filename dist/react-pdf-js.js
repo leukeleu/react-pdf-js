@@ -16431,7 +16431,7 @@ var Pdf = function (_React$Component) {
         this.loadPDFDocument(newProps);
       }
 
-      if (pdf && (newProps.page && newProps.page !== this.props.page || newProps.scale && newProps.scale !== this.props.scale || newProps.rotate && newProps.rotate !== this.props.rotate)) {
+      if (pdf && (newProps.page && newProps.page !== this.props.page || newProps.rotate && newProps.rotate !== this.props.rotate)) {
         this.setState({ page: null });
         pdf.getPage(newProps.page).then(this.onPageComplete);
       }
@@ -16553,6 +16553,8 @@ var Pdf = function (_React$Component) {
   }, {
     key: 'renderPdf',
     value: function renderPdf() {
+      var _this3 = this;
+
       var page = this.state.page;
 
       if (page) {
@@ -16561,11 +16563,9 @@ var Pdf = function (_React$Component) {
 
 
         var unscaledViewport = page.getViewport(1);
-        var container = document.querySelector('.pdf-container');
-
         var aspectRatio = unscaledViewport.height / unscaledViewport.width;
-        canvas.height = container.clientWidth * aspectRatio;
-        canvas.width = container.clientWidth;
+        canvas.height = this.container.clientWidth * aspectRatio;
+        canvas.width = this.container.clientWidth;
 
         var scale = canvas.width / unscaledViewport.width;
         var viewport = page.getViewport(scale, rotate);
@@ -16573,13 +16573,8 @@ var Pdf = function (_React$Component) {
         page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).then(function () {
           return page.getTextContent();
         }).then(function (textContent) {
-          var textLayerDiv = document.createElement('div');
-          textLayerDiv.setAttribute('class', 'textLayer');
-
-          container.appendChild(textLayerDiv);
-
           var textLayer = new _text_layer_builder.TextLayerBuilder({
-            textLayerDiv: textLayerDiv,
+            textLayerDiv: _this3.textLayerDiv,
             pageIndex: page.pageIndex,
             viewport: viewport
           });
@@ -16592,7 +16587,7 @@ var Pdf = function (_React$Component) {
   }, {
     key: 'render',
     value: function render() {
-      var _this3 = this;
+      var _this4 = this;
 
       var loading = this.props.loading;
       var _state = this.state,
@@ -16609,14 +16604,19 @@ var Pdf = function (_React$Component) {
       } else if (page) {
         return _react2.default.createElement(
           'div',
-          { className: 'pdf-container' },
+          { className: 'pdf-container', ref: function ref(container) {
+              _this4.container = container;
+            } },
           _react2.default.createElement('canvas', {
             ref: function ref(c) {
-              _this3.canvas = c;
+              _this4.canvas = c;
             },
             className: this.props.className,
             style: this.props.style
-          })
+          }),
+          _react2.default.createElement('div', { className: 'textLayer', ref: function ref(textLayerDiv) {
+              _this4.textLayerDiv = textLayerDiv;
+            } })
         );
       } else if (loading) {
         return _react2.default.createElement(
@@ -16643,7 +16643,6 @@ Pdf.propTypes = {
   file: _propTypes2.default.any, // Could be File object or URL string.
   loading: _propTypes2.default.any,
   page: _propTypes2.default.number,
-  scale: _propTypes2.default.number,
   rotate: _propTypes2.default.number,
   onContentAvailable: _propTypes2.default.func,
   onBinaryContentAvailable: _propTypes2.default.func,
@@ -16654,8 +16653,7 @@ Pdf.propTypes = {
   style: _propTypes2.default.object
 };
 Pdf.defaultProps = {
-  page: 1,
-  scale: 1.0
+  page: 1
 };
 
 

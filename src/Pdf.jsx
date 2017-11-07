@@ -38,7 +38,6 @@ class Pdf extends React.Component {
     file: PropTypes.any, // Could be File object or URL string.
     loading: PropTypes.any,
     page: PropTypes.number,
-    scale: PropTypes.number,
     rotate: PropTypes.number,
     onContentAvailable: PropTypes.func,
     onBinaryContentAvailable: PropTypes.func,
@@ -51,7 +50,6 @@ class Pdf extends React.Component {
 
   static defaultProps = {
     page: 1,
-    scale: 1.0,
   };
 
   // Converts an ArrayBuffer directly to base64, without any intermediate 'convert to string then
@@ -150,7 +148,6 @@ class Pdf extends React.Component {
     }
 
     if (pdf && ((newProps.page && newProps.page !== this.props.page) ||
-      (newProps.scale && newProps.scale !== this.props.scale) ||
       (newProps.rotate && newProps.rotate !== this.props.rotate))) {
       this.setState({ page: null });
       pdf.getPage(newProps.page).then(this.onPageComplete);
@@ -261,11 +258,9 @@ class Pdf extends React.Component {
       const { rotate } = this.props;
 
       const unscaledViewport = page.getViewport(1);
-      const container = document.querySelector('.pdf-container');
-
       const aspectRatio = unscaledViewport.height / unscaledViewport.width;
-      canvas.height = container.clientWidth * aspectRatio;
-      canvas.width = container.clientWidth;
+      canvas.height = this.container.clientWidth * aspectRatio;
+      canvas.width = this.container.clientWidth;
 
       const scale = canvas.width / unscaledViewport.width;
       const viewport = page.getViewport(scale, rotate);
@@ -273,13 +268,8 @@ class Pdf extends React.Component {
       page.render({ canvasContext: canvas.getContext('2d'), viewport })
         .then(() => page.getTextContent())
         .then((textContent) => {
-          const textLayerDiv = document.createElement('div');
-          textLayerDiv.setAttribute('class', 'textLayer');
-
-          container.appendChild(textLayerDiv);
-
           const textLayer = new TextLayerBuilder({
-            textLayerDiv,
+            textLayerDiv: this.textLayerDiv,
             pageIndex: page.pageIndex,
             viewport,
           });
@@ -298,12 +288,13 @@ class Pdf extends React.Component {
       return <div>Error loading pdf</div>;
     } else if (page) {
       return (
-        <div className="pdf-container">
+        <div className="pdf-container" ref={(container) => { this.container = container; }}>
           <canvas
             ref={(c) => { this.canvas = c; }}
             className={this.props.className}
             style={this.props.style}
           />
+          <div className="textLayer" ref={(textLayerDiv) => { this.textLayerDiv = textLayerDiv; }} />
         </div>
       );
     } else if (loading) {
