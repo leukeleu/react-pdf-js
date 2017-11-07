@@ -38,6 +38,7 @@ class Pdf extends React.Component {
     file: PropTypes.any, // Could be File object or URL string.
     loading: PropTypes.any,
     page: PropTypes.number,
+    scale: PropTypes.number,
     rotate: PropTypes.number,
     onContentAvailable: PropTypes.func,
     onBinaryContentAvailable: PropTypes.func,
@@ -148,6 +149,7 @@ class Pdf extends React.Component {
     }
 
     if (pdf && ((newProps.page && newProps.page !== this.props.page) ||
+      (newProps.scale && newProps.scale !== this.props.scale) ||
       (newProps.rotate && newProps.rotate !== this.props.rotate))) {
       this.setState({ page: null });
       pdf.getPage(newProps.page).then(this.onPageComplete);
@@ -255,15 +257,22 @@ class Pdf extends React.Component {
     const { page } = this.state;
     if (page) {
       const { canvas } = this;
-      const { rotate } = this.props;
+      const { scale, rotate } = this.props;
+      let viewport;
 
-      const unscaledViewport = page.getViewport(1);
-      const aspectRatio = unscaledViewport.height / unscaledViewport.width;
-      canvas.height = this.container.clientWidth * aspectRatio;
-      canvas.width = this.container.clientWidth;
+      if (scale) {
+        viewport = page.getViewport(scale, rotate);
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+      } else {
+        const unscaledViewport = page.getViewport(1);
+        const aspectRatio = unscaledViewport.height / unscaledViewport.width;
+        canvas.height = this.container.clientWidth * aspectRatio;
+        canvas.width = this.container.clientWidth;
 
-      const scale = canvas.width / unscaledViewport.width;
-      const viewport = page.getViewport(scale, rotate);
+        const calculatedScale = canvas.width / unscaledViewport.width;
+        viewport = page.getViewport(calculatedScale, rotate);
+      }
 
       page.render({ canvasContext: canvas.getContext('2d'), viewport })
         .then(() => page.getTextContent())

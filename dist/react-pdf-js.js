@@ -16431,7 +16431,7 @@ var Pdf = function (_React$Component) {
         this.loadPDFDocument(newProps);
       }
 
-      if (pdf && (newProps.page && newProps.page !== this.props.page || newProps.rotate && newProps.rotate !== this.props.rotate)) {
+      if (pdf && (newProps.page && newProps.page !== this.props.page || newProps.scale && newProps.scale !== this.props.scale || newProps.rotate && newProps.rotate !== this.props.rotate)) {
         this.setState({ page: null });
         pdf.getPage(newProps.page).then(this.onPageComplete);
       }
@@ -16559,16 +16559,25 @@ var Pdf = function (_React$Component) {
 
       if (page) {
         var canvas = this.canvas;
-        var rotate = this.props.rotate;
+        var _props3 = this.props,
+            scale = _props3.scale,
+            rotate = _props3.rotate;
 
+        var viewport = void 0;
 
-        var unscaledViewport = page.getViewport(1);
-        var aspectRatio = unscaledViewport.height / unscaledViewport.width;
-        canvas.height = this.container.clientWidth * aspectRatio;
-        canvas.width = this.container.clientWidth;
+        if (scale) {
+          viewport = page.getViewport(scale, rotate);
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+        } else {
+          var unscaledViewport = page.getViewport(1);
+          var aspectRatio = unscaledViewport.height / unscaledViewport.width;
+          canvas.height = this.container.clientWidth * aspectRatio;
+          canvas.width = this.container.clientWidth;
 
-        var scale = canvas.width / unscaledViewport.width;
-        var viewport = page.getViewport(scale, rotate);
+          var calculatedScale = canvas.width / unscaledViewport.width;
+          viewport = page.getViewport(calculatedScale, rotate);
+        }
 
         page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).then(function () {
           return page.getTextContent();
@@ -16643,6 +16652,7 @@ Pdf.propTypes = {
   file: _propTypes2.default.any, // Could be File object or URL string.
   loading: _propTypes2.default.any,
   page: _propTypes2.default.number,
+  scale: _propTypes2.default.number,
   rotate: _propTypes2.default.number,
   onContentAvailable: _propTypes2.default.func,
   onBinaryContentAvailable: _propTypes2.default.func,
