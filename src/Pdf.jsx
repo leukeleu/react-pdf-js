@@ -119,11 +119,17 @@ class Pdf extends React.Component {
     this.onDocumentComplete = this.onDocumentComplete.bind(this);
     this.onPageComplete = this.onPageComplete.bind(this);
     this.getDocument = this.getDocument.bind(this);
+    this.onResize = this.onResize.bind(this);
+    this.renderPdf = this.renderPdf.bind(this);
   }
 
   componentDidMount() {
     this.loadPDFDocument(this.props);
     this.renderPdf();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', this.onResize, false);
+    }
   }
 
   componentWillReceiveProps(newProps) {
@@ -163,6 +169,20 @@ class Pdf extends React.Component {
     }
     if (this.documentPromise) {
       this.documentPromise.cancel();
+    }
+
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', this.onResize);
+    }
+  }
+
+  onResize() {
+    if (this.rqf) return;
+    if (typeof window !== 'undefined') {
+      this.rqf = window.requestAnimationFrame(() => {
+        this.rqf = null;
+        this.renderPdf();
+      });
     }
   }
 
@@ -221,7 +241,6 @@ class Pdf extends React.Component {
     return this.documentPromise;
   }
 
-
   loadByteArray(byteArray) {
     this.getDocument(byteArray);
   }
@@ -277,6 +296,7 @@ class Pdf extends React.Component {
       page.render({ canvasContext: canvas.getContext('2d'), viewport })
         .then(() => page.getTextContent())
         .then((textContent) => {
+          this.textLayerDiv.innerHTML = '';
           const textLayer = new TextLayerBuilder({
             textLayerDiv: this.textLayerDiv,
             pageIndex: page.pageIndex,
