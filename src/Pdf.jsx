@@ -283,6 +283,10 @@ class Pdf extends React.Component {
         viewport = page.getViewport(scale, rotate);
         canvas.height = viewport.height;
         canvas.width = viewport.width;
+
+        this.setState({
+          canvasWidth: canvas.width,
+        });
       } else {
         const unscaledViewport = page.getViewport(1);
         const aspectRatio = unscaledViewport.height / unscaledViewport.width;
@@ -313,17 +317,32 @@ class Pdf extends React.Component {
     const { loading } = this.props;
     const { page, error } = this.state;
 
+    let containerStyle = {};
+
+    if (this.state.canvasWidth) {
+      containerStyle = {
+        width: `${this.state.canvasWidth}px`,
+      };
+    }
+
     if (error) {
       return <div>Error loading pdf</div>;
     } else if (page) {
       return (
-        <div className="pdf-container" ref={(container) => { this.container = container; }}>
+        <div
+          className="pdf-container"
+          ref={(container) => { this.container = container; }}
+          style={containerStyle}
+        >
           <canvas
             ref={(c) => { this.canvas = c; }}
             className={this.props.className}
             style={this.props.style}
           />
-          <div className="textLayer" ref={(textLayerDiv) => { this.textLayerDiv = textLayerDiv; }} />
+          <div
+            className="textLayer"
+            ref={(textLayerDiv) => { this.textLayerDiv = textLayerDiv; }}
+          />
         </div>
       );
     } else if (loading) {

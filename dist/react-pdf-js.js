@@ -16602,6 +16602,10 @@ var Pdf = function (_React$Component) {
           viewport = page.getViewport(scale, rotate);
           canvas.height = viewport.height;
           canvas.width = viewport.width;
+
+          this.setState({
+            canvasWidth: canvas.width
+          });
         } else {
           var unscaledViewport = page.getViewport(1);
           var aspectRatio = unscaledViewport.height / unscaledViewport.width;
@@ -16611,6 +16615,8 @@ var Pdf = function (_React$Component) {
           var calculatedScale = canvas.width / unscaledViewport.width;
           viewport = page.getViewport(calculatedScale, rotate);
         }
+
+        console.log(canvas.width, canvas.height);
 
         page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).then(function () {
           return page.getTextContent();
@@ -16633,10 +16639,20 @@ var Pdf = function (_React$Component) {
       var _this5 = this;
 
       var loading = this.props.loading;
+      // const { page, error } = this.state;
+
       var _state = this.state,
           page = _state.page,
           error = _state.error;
 
+
+      var containerStyle = {};
+
+      if (this.state.canvasWidth) {
+        containerStyle = {
+          width: this.state.canvasWidth + 'px'
+        };
+      }
 
       if (error) {
         return _react2.default.createElement(
@@ -16647,9 +16663,13 @@ var Pdf = function (_React$Component) {
       } else if (page) {
         return _react2.default.createElement(
           'div',
-          { className: 'pdf-container', ref: function ref(container) {
+          {
+            className: 'pdf-container',
+            ref: function ref(container) {
               _this5.container = container;
-            } },
+            },
+            style: containerStyle
+          },
           _react2.default.createElement('canvas', {
             ref: function ref(c) {
               _this5.canvas = c;
@@ -16657,9 +16677,12 @@ var Pdf = function (_React$Component) {
             className: this.props.className,
             style: this.props.style
           }),
-          _react2.default.createElement('div', { className: 'textLayer', ref: function ref(textLayerDiv) {
+          _react2.default.createElement('div', {
+            className: 'textLayer',
+            ref: function ref(textLayerDiv) {
               _this5.textLayerDiv = textLayerDiv;
-            } })
+            }
+          })
         );
       } else if (loading) {
         return _react2.default.createElement(
