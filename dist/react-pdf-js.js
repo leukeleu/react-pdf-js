@@ -16616,8 +16616,6 @@ var Pdf = function (_React$Component) {
           viewport = page.getViewport(calculatedScale, rotate);
         }
 
-        console.log(canvas.width, canvas.height);
-
         page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).then(function () {
           return page.getTextContent();
         }).then(function (textContent) {
@@ -16639,8 +16637,6 @@ var Pdf = function (_React$Component) {
       var _this5 = this;
 
       var loading = this.props.loading;
-      // const { page, error } = this.state;
-
       var _state = this.state,
           page = _state.page,
           error = _state.error;
