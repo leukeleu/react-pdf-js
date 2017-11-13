@@ -279,6 +279,14 @@ class Pdf extends React.Component {
       const { scale, rotate } = this.props;
       let viewport;
 
+      const isPromise = typeof this.renderTask !== 'undefined' &&
+        this.renderTask.hasOwnProperty('then') &&
+        typeof this.renderTask.then == 'function';
+
+      if (isPromise) {
+        this.renderTask.cancel();
+      }
+
       if (scale) {
         viewport = page.getViewport(scale, rotate);
         canvas.height = viewport.height;
@@ -297,7 +305,12 @@ class Pdf extends React.Component {
         viewport = page.getViewport(calculatedScale, rotate);
       }
 
-      page.render({ canvasContext: canvas.getContext('2d'), viewport })
+      const renderContext = {
+        canvasContext: canvas.getContext('2d'),
+        viewport,
+      };
+
+      this.renderTask = page.render(renderContext)
         .then(() => page.getTextContent())
         .then((textContent) => {
           this.textLayerDiv.innerHTML = '';
