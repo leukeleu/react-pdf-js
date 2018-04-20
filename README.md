@@ -1,4 +1,4 @@
-#react-pdf-js
+# react-pdf-js
 ---
 [![NPM Version](https://img.shields.io/npm/v/react-pdf-js.svg?style=flat-square)](https://www.npmjs.com/package/react-pdf-js)
 [![NPM Downloads](https://img.shields.io/npm/dm/react-pdf-js.svg?style=flat-square)](https://www.npmjs.com/package/react-pdf-js)
@@ -7,7 +7,7 @@
 [![devDependency Status](https://david-dm.org/mikecousins/react-pdf-js/dev-status.svg)](https://david-dm.org/mikecousins/react-pdf-js#info=devDependencies)
 [![bitHound Overall Score](https://www.bithound.io/github/mikecousins/react-pdf-js/badges/score.svg)](https://www.bithound.io/github/mikecousins/react-pdf-js)
 
-`react-pdf-js` provides a component for rendering PDF documents using [PDF.js](http://mozilla.github.io/pdf.js/). Written for React 15 and ES2015 using the Airbnb style guide.
+`react-pdf-js` provides a component for rendering PDF documents using [PDF.js](http://mozilla.github.io/pdf.js/). Written for React 15/16 and ES2015 using the Airbnb style guide.
 
 ---
 
@@ -23,31 +23,25 @@ import React from 'react';
 import PDF from 'react-pdf-js';
 
 class MyPdfViewer extends React.Component {
-  constructor(props) {
-    super(props);
-    this.onDocumentComplete = this.onDocumentComplete.bind(this);
-    this.onPageComplete = this.onPageComplete.bind(this);
-    this.handlePrevious = this.handlePrevious.bind(this);
-    this.handleNext = this.handleNext.bind(this);
-  }
+  state = {};
 
-  onDocumentComplete(pages) {
+  onDocumentComplete = (pages) => {
     this.setState({ page: 1, pages });
   }
 
-  onPageComplete(page) {
+  onPageComplete = (page) => {
     this.setState({ page });
   }
 
-  handlePrevious() {
+  handlePrevious = () => {
     this.setState({ page: this.state.page - 1 });
   }
 
-  handleNext() {
+  handleNext = () => {
     this.setState({ page: this.state.page + 1 });
   }
 
-  renderPagination(page, pages) {
+  renderPagination = (page, pages) => {
     let previousButton = <li className="previous" onClick={this.handlePrevious}><a href="#"><i className="fa fa-arrow-left"></i> Previous</a></li>;
     if (page === 1) {
       previousButton = <li className="previous disabled"><a href="#"><i className="fa fa-arrow-left"></i> Previous</a></li>;
@@ -73,15 +67,63 @@ class MyPdfViewer extends React.Component {
     }
     return (
       <div>
-        <PDF file="somefile.pdf" onDocumentComplete={this.onDocumentComplete} onPageComplete={this.onPageComplete} page={this.state.page} />
+        <PDF
+          file="somefile.pdf"
+          onDocumentComplete={this.onDocumentComplete}
+          onPageComplete={this.onPageComplete}
+          page={this.state.page}
+        />
         {pagination}
       </div>
+    )
   }
 }
 
 module.exports = MyPdfViewer;
 ```
 
+## Scaling
+
+The PDF can be scaled in a couple of different ways.
+
+### Stretch to fill width/height
+
+Use the prop `fillWidth` to make the PDF stretch to the width of the parent element (generally speaking, this will be the enclosing `<div>`), or use `fillHeight` to do the same for the height of the PDF. The PDF will be scaled proportionately.
+
+Both `fillWidth` and `fillHeight` default to `false`.
+
+Note: `fillWidth` has precedence over `fillHeight`. So if you use both, the PDF will stretch to fill the width.
+
+Example:
+
+```js
+<div className="parentDivWhoseWidthAndHeightAreUsedToStretchThePdf">
+  <PDF
+    file="somefile.pdf"
+    fillWidth
+    fillHeight // this will be ignored because fillWidth is also passed
+  />
+</div>
+```
+
+### Set scale directly
+
+You can also set the scale manually by passing the `scale` prop. A `scale` between `0` and `1` shrinks the PDF, and a `scale` greater than `1` enlarges it.
+
+`scale` defaults to `1`.
+
+Note: the value of `scale` will be ignored if you also use `fillWidth` or `fillHeight`.
+
+Example:
+
+```js
+<div>
+  <PDF
+    file="somefile.pdf"
+    scale={1.5}
+  />
+</div>
+```
 
 ## Credit
 

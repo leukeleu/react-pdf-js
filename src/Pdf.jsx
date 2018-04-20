@@ -25,8 +25,19 @@ const makeCancelable = (promise) => {
   };
 };
 
-class Pdf extends React.Component {
+const calculateScale = (scale, fillWidth, fillHeight, view, parentElement) => {
+  if (fillWidth) {
+    const pageWidth = view[2] - view[0];
+    return parentElement.clientWidth / pageWidth;
+  }
+  if (fillHeight) {
+    const pageHeight = view[3] - view[1];
+    return parentElement.clientHeight / pageHeight;
+  }
+  return scale;
+};
 
+class Pdf extends React.Component {
   static propTypes = {
     content: PropTypes.string,
     documentInitParameters: PropTypes.shape({
@@ -39,11 +50,14 @@ class Pdf extends React.Component {
     loading: PropTypes.any,
     page: PropTypes.number,
     scale: PropTypes.number,
+    fillWidth: PropTypes.bool, // stretch to fill width, has precedence over fillHeight
+    fillHeight: PropTypes.bool, // stretch to fill height
     rotate: PropTypes.number,
     onContentAvailable: PropTypes.func,
     onBinaryContentAvailable: PropTypes.func,
     binaryToBase64: PropTypes.func,
     onDocumentComplete: PropTypes.func,
+    onDocumentError: PropTypes.func,
     onPageComplete: PropTypes.func,
     className: PropTypes.string,
     style: PropTypes.object,
@@ -51,6 +65,9 @@ class Pdf extends React.Component {
 
   static defaultProps = {
     page: 1,
+    scale: 1.0,
+    fillWidth: false,
+    fillHeight: false,
   };
 
   // Converts an ArrayBuffer directly to base64, without any intermediate 'convert to string then
@@ -62,7 +79,7 @@ class Pdf extends React.Component {
     const encodings = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
     const bytes = new Uint8Array(arrayBuffer);
-    const byteLength = bytes.byteLength;
+    const { byteLength } = bytes;
     const byteRemainder = byteLength % 3;
     const mainLength = byteLength - byteRemainder;
 
@@ -79,9 +96,9 @@ class Pdf extends React.Component {
 
       // Use bitmasks to extract 6-bit segments from the triplet
       a = (chunk & 16515072) >> 18; // 16515072 = (2^6 - 1) << 18
-      b = (chunk & 258048) >> 12; // 258048   = (2^6 - 1) << 12
-      c = (chunk & 4032) >> 6; // 4032     = (2^6 - 1) << 6
-      d = chunk & 63;               // 63       = 2^6 - 1
+      b = (chunk & 258048) >> 12; // 258048 = (2^6 - 1) << 12
+      c = (chunk & 4032) >> 6; // 4032 = (2^6 - 1) << 6
+      d = chunk & 63; // 63 = 2^6 - 1
 
       // Convert the raw binary segments to the appropriate ASCII encoding
       base64 = [base64, encodings[a], encodings[b], encodings[c], encodings[d]].join('');
@@ -112,31 +129,24 @@ class Pdf extends React.Component {
     return base64;
   }
 
-  constructor(props) {
-    super(props);
-    this.state = {};
-    this.onGetPdfRaw = this.onGetPdfRaw.bind(this);
-    this.onDocumentComplete = this.onDocumentComplete.bind(this);
-    this.onPageComplete = this.onPageComplete.bind(this);
-    this.getDocument = this.getDocument.bind(this);
-    this.onResize = this.onResize.bind(this);
-    this.renderPdf = this.renderPdf.bind(this);
-  }
+  state = {};
 
   componentDidMount() {
     this.loadPDFDocument(this.props);
     this.renderPdf();
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('resize', this.onResize, false);
-    }
+    // re-scale PDF when size or orientation of window changes
+    window.addEventListener('resize', this.renderPdf);
+    window.addEventListener('orientationchange', this.renderPdf);
   }
 
   componentWillReceiveProps(newProps) {
     const { pdf } = this.state;
 
-    const newDocInit = newProps.documentInitParameters;
-    const docInit = this.props.documentInitParameters;
+    const newDocInit = (newProps.documentInitParameters && newProps.documentInitParameters.url) ?
+      newProps.documentInitParameters.url : null;
+    const docInit = (this.props.documentInitParameters && this.props.documentInitParameters.url) ?
+      this.props.documentInitParameters.url : null;
 
     // Only reload if the most significant source has changed!
     let newSource = newProps.file;
@@ -145,12 +155,14 @@ class Pdf extends React.Component {
     oldSource = newSource && !oldSource ? this.props.binaryContent : oldSource;
     newSource = newSource || newProps.content;
     oldSource = newSource && !oldSource ? this.props.content : oldSource;
+    newSource = newSource || newDocInit;
+    oldSource = newSource && !oldSource ? docInit : oldSource;
 
     if (newSource && newSource !== oldSource &&
       ((newProps.file && newProps.file !== this.props.file) ||
       (newProps.content && newProps.content !== this.props.content) ||
-      (newDocInit && newDocInit !== docInit) ||
-      (newDocInit && docInit && newDocInit.url !== docInit.url))) {
+      (newProps.binaryContent && newProps.binaryContent !== this.props.binaryContent) ||
+      (newDocInit && JSON.stringify(newDocInit) !== JSON.stringify(docInit)))) {
       this.loadPDFDocument(newProps);
     }
 
@@ -171,30 +183,11 @@ class Pdf extends React.Component {
       this.documentPromise.cancel();
     }
 
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('resize', this.onResize);
-    }
+    window.removeEventListener('resize', this.renderPdf);
+    window.removeEventListener('orientationchange', this.renderPdf);
   }
 
-  onResize() {
-    if (this.rqf) return;
-    if (typeof window !== 'undefined') {
-      this.rqf = window.requestAnimationFrame(() => {
-        this.rqf = null;
-        this.renderPdf();
-      });
-    }
-  }
-
-  onDocumentError(err) {
-    if (err.isCanceled && err.pdf) {
-      err.pdf.destroy();
-    }
-
-    this.setState({ error: true });
-  }
-
-  onGetPdfRaw(pdfRaw) {
+  onGetPdfRaw = (pdfRaw) => {
     const { onContentAvailable, onBinaryContentAvailable, binaryToBase64 } = this.props;
     if (typeof onBinaryContentAvailable === 'function') {
       onBinaryContentAvailable(pdfRaw);
@@ -208,7 +201,7 @@ class Pdf extends React.Component {
     }
   }
 
-  onDocumentComplete(pdf) {
+  onDocumentComplete = (pdf) => {
     this.setState({ pdf });
     const { onDocumentComplete, onContentAvailable, onBinaryContentAvailable } = this.props;
     if (typeof onDocumentComplete === 'function') {
@@ -220,7 +213,17 @@ class Pdf extends React.Component {
     pdf.getPage(this.props.page).then(this.onPageComplete);
   }
 
-  onPageComplete(page) {
+  onDocumentError = (err) => {
+    if (err.isCanceled && err.pdf) {
+      err.pdf.destroy();
+    }
+    if (typeof this.props.onDocumentError === 'function') {
+      this.props.onDocumentError(err);
+    }
+    // this.setState({ error: true });
+  }
+
+  onPageComplete = (page) => {
     this.setState({ page });
     this.renderPdf();
     const { onPageComplete } = this.props;
@@ -229,7 +232,7 @@ class Pdf extends React.Component {
     }
   }
 
-  getDocument(val) {
+  getDocument = (val) => {
     if (this.documentPromise) {
       this.documentPromise.cancel();
     }
@@ -241,11 +244,12 @@ class Pdf extends React.Component {
     return this.documentPromise;
   }
 
-  loadByteArray(byteArray) {
+
+  loadByteArray = (byteArray) => {
     this.getDocument(byteArray);
   }
 
-  loadPDFDocument(props) {
+  loadPDFDocument = (props) => {
     if (props.file) {
       if (typeof props.file === 'string') {
         return this.getDocument(props.file);
@@ -272,52 +276,54 @@ class Pdf extends React.Component {
     }
   }
 
-  renderPdf() {
+  renderPdf = () => {
     const { page } = this.state;
     if (page) {
-      const { canvas } = this;
-      const { scale, rotate } = this.props;
-      let viewport;
+      const {
+        fillWidth,
+        fillHeight,
+        rotate,
+        scale: pScale,
+        className,
+        style,
+      } = this.props;
 
-      const isPromise = typeof this.renderTask !== 'undefined' &&
-        this.renderTask.hasOwnProperty('then') &&
-        typeof this.renderTask.then == 'function';
+      // We need to create a new canvas every time in order to avoid concurrent rendering
+      // in the same canvas, which can lead to distorted or upside-down views.
+      const canvas = document.createElement('canvas');
 
-      if (isPromise) {
-        this.renderTask.cancel();
-      }
+      Object.keys(style || {}).forEach((styleField) => {
+        canvas.style[styleField] = style[styleField];
+      });
+      canvas.className = className;
 
-      if (scale) {
-        viewport = page.getViewport(scale, rotate);
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-
-        this.setState({
-          canvasWidth: canvas.width,
-        });
+      // Replace or add the new canvas to the placehloder div set up in the render method.
+      const parentElement = this.canvasParent;
+      const previousCanvas = parentElement.firstChild;
+      if (previousCanvas) {
+        parentElement.replaceChild(canvas, previousCanvas);
       } else {
-        const unscaledViewport = page.getViewport(1);
-        const aspectRatio = unscaledViewport.height / unscaledViewport.width;
-        canvas.height = this.container.clientWidth * aspectRatio;
-        canvas.width = this.container.clientWidth;
-
-        const calculatedScale = canvas.width / unscaledViewport.width;
-        viewport = page.getViewport(calculatedScale, rotate);
+        parentElement.appendChild(canvas);
       }
 
-      const renderContext = {
-        canvasContext: canvas.getContext('2d'),
-        viewport,
-      };
-
-      this.renderTask = page.render(renderContext)
+      const canvasContext = canvas.getContext('2d');
+      const dpiScale = window.devicePixelRatio || 1;
+      const scale = calculateScale(pScale, fillWidth, fillHeight, page.view, parentElement);
+      const adjustedScale = scale * dpiScale;
+      const viewport = page.getViewport(adjustedScale, rotate);
+      const unAdjustedViewport = page.getViewport(scale, rotate);
+      canvas.style.width = `${viewport.width / dpiScale}px`;
+      canvas.style.height = `${viewport.height / dpiScale}px`;
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      page.render({ canvasContext, viewport })
         .then(() => page.getTextContent())
         .then((textContent) => {
           this.textLayerDiv.innerHTML = '';
           const textLayer = new TextLayerBuilder({
             textLayerDiv: this.textLayerDiv,
             pageIndex: page.pageIndex,
-            viewport,
+            viewport: unAdjustedViewport,
           });
 
           textLayer.setTextContent(textContent);
@@ -328,41 +334,19 @@ class Pdf extends React.Component {
 
   render() {
     const { loading } = this.props;
-    const { page, error } = this.state;
-
-    let containerStyle = {};
-
-    if (this.state.canvasWidth) {
-      containerStyle = {
-        width: `${this.state.canvasWidth}px`,
-      };
-    }
-
-    if (error) {
-      return <div>Error loading pdf</div>;
-    } else if (page) {
-      return (
+    const { page } = this.state;
+    return page ?
+      <div
+        className="pdf-container"
+      >
+        <div ref={(parentDiv) => { this.canvasParent = parentDiv; }} />
         <div
-          className="pdf-container"
-          ref={(container) => { this.container = container; }}
-          style={containerStyle}
-        >
-          <canvas
-            ref={(c) => { this.canvas = c; }}
-            className={this.props.className}
-            style={this.props.style}
-          />
-          <div
-            className="textLayer"
-            ref={(textLayerDiv) => { this.textLayerDiv = textLayerDiv; }}
-          />
-        </div>
-      );
-    } else if (loading) {
-      return <div>Loading PDF...</div>;
-    }
-
-    return null;
+          className="textLayer"
+          ref={(textLayerDiv) => { this.textLayerDiv = textLayerDiv; }}
+        />
+      </div>
+      :
+      loading || <div>Loading PDF...</div>;
   }
 }
 

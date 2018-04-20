@@ -30,7 +30,7 @@ module.exports = {
     ]
   },
   output: {
-    library: 'ReduxForm',
+    library: 'ReactPdfJs',
     libraryTarget: 'umd'
   },
   resolve: {
